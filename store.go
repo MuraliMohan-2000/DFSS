@@ -98,6 +98,10 @@ func (s *store) Has(key string) bool {
 	return true
 }
 
+func (s *store) clear() error {
+	return os.RemoveAll(s.Root)
+}
+
 func (s *store) Delete(key string) error {
 	pathkey := s.PathTransformFunc(key)
 
