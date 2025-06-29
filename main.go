@@ -1,40 +1,38 @@
 package main
 
 import (
-	"fmt"
 	"log"
+	"time"
 
 	"murali.dfss/p2p"
 )
 
-func OnPeer(peer p2p.Peer) error {
-	peer.Close()
-	return nil
-}
-
 func main() {
 
-	tcpOpts := p2p.TCPTransportOps{
+	tcpTranspotOpts := p2p.TCPTransportOpts{
 		ListenAddr:    ":3000",
 		HandshakeFunc: p2p.NOPHandshakeFunc,
 		Decoder:       p2p.DefaultDecoder{},
-		OnPeer:        OnPeer,
+		//ToDO: onPeer func
 	}
 
-	tr := p2p.NewTCPTransport(tcpOpts)
+	tcpTranspot := p2p.NewTCPTransport(tcpTranspotOpts)
+
+	fileServerOPts := FileServerOpts{
+		StorageRoot:       "3000_network",
+		PathTransformFunc: CASPathTRansformFunc,
+		Transport:         tcpTranspot,
+	}
+
+	s := NewFileServer(fileServerOPts)
 
 	go func() {
-		for {
-			msg := <-tr.Consume()
-			fmt.Printf("%+v\n", msg)
-
-		}
+		time.Sleep(time.Second * 3)
+		s.Stop()
 	}()
 
-	if err := tr.ListenAndAccept(); err != nil {
+	if err := s.Start(); err != nil {
 		log.Fatal(err)
 	}
-
-	select {}
 
 }

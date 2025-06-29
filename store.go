@@ -92,10 +92,7 @@ func (s *store) Has(key string) bool {
 
 	_, err := os.Stat(fullPathWithRoot)
 
-	if errors.Is(err, os.ErrNotExist) {
-		return false
-	}
-	return true
+	return !errors.Is(err, os.ErrNotExist)
 }
 
 func (s *store) clear() error {
@@ -113,6 +110,10 @@ func (s *store) Delete(key string) error {
 
 	return os.RemoveAll(firstPathNameWithRoot)
 
+}
+
+func (s *store) Write(key string, r io.Reader) error {
+	return s.writeStream(key, r)
 }
 
 func (s *store) Read(key string) (io.Reader, error) {
