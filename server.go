@@ -56,13 +56,22 @@ type Message struct {
 	Payload any
 }
 
+type MessageStoreFile struct {
+	Key  string
+	Size int64
+}
+
 func (s *FileServer) storeData(key string, r io.Reader) error {
 	//1.Store this file to disk
 	//2.Brodcast this file to all known peers in the network
 	buf := new(bytes.Buffer)
 	msg := Message{
-		Payload: []byte("storagekey"),
+		Payload: MessageStoreFile{
+			Key:  key,
+			Size: 15,
+		},
 	}
+
 	if err := gob.NewEncoder(buf).Encode(msg); err != nil {
 		return err
 	}
@@ -130,42 +139,43 @@ func (s *FileServer) loop() {
 			var msg Message
 			if err := gob.NewDecoder(bytes.NewReader(rpc.Payload)).Decode(&msg); err != nil {
 				log.Println(err)
+				return
 			}
-
-			fmt.Printf("receive: %s\n", string(msg.Payload.([]byte)))
-
-			peer, ok := s.peers[rpc.From]
-			if !ok {
-				panic("peer not found in peer map")
+			if err := s.handleMessage(rpc.From, &msg); err != nil {
+				log.Println(err)
+				return
 			}
-
-			b := make([]byte, 1000)
-			if _, err := peer.Read(b); err != nil {
-				panic(err)
-			}
-
-			fmt.Printf("%s\n", string(b))
-
-			peer.(*p2p.TCPPeer).Wg.Done()
-
-			// if err := s.handleMessage(&m); err != nil {
-			// 	log.Println(err)
-			// }
-
 		case <-s.quitch:
 			return
 		}
 	}
 }
 
-// func (s *FileServer) handleMessage(msg *Message) error {
-// 	switch v := msg.Payload.(type) {
-// 	case DataMessage:
-// 		fmt.Printf("received data %+v\n", v)
-// 	}
+func (s *FileServer) handleMessage(from string, msg *Message) error {
+	switch v := msg.Payload.(type) {
+	case MessageStoreFile:
+		return s.handleMessageStoreFile(from, v)
+	}
 
-// 	return nil
-// }
+	return nil
+}
+
+func (s *FileServer) handleMessageStoreFile(from string, msg MessageStoreFile) error {
+	peer, ok := s.peers[from]
+
+	if !ok {
+		return fmt.Errorf("peer (%s) could not be found in the peer list", from)
+	}
+
+	if err := s.store.Write(msg.Key, io.LimitReader(peer, msg.Size)); err != nil {
+		return err
+	}
+
+	peer.(*p2p.TCPPeer).Wg.Done()
+
+	return nil
+
+}
 
 func (s *FileServer) bootsStrapNetwork() error {
 	for _, addr := range s.BootStrapNodes {
@@ -191,4 +201,8 @@ func (s *FileServer) Start() error {
 	s.bootsStrapNetwork()
 	s.loop()
 	return nil
+}
+
+func init() {
+	gob.Register(MessageStoreFile{})
 }
