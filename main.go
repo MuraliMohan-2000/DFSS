@@ -16,18 +16,18 @@ func makeServer(listenAddr string, nodes ...string) *FileServer {
 		Decoder:       p2p.DefaultDecoder{},
 	}
 
-	tcpTranspot := p2p.NewTCPTransport(tcpTranspotOpts)
+	tcpTransport := p2p.NewTCPTransport(tcpTranspotOpts)
 
 	fileServerOPts := FileServerOpts{
 		StorageRoot:       listenAddr + "_network",
 		PathTransformFunc: CASPathTRansformFunc,
-		Transport:         tcpTranspot,
+		Transport:         tcpTransport,
 		BootStrapNodes:    nodes,
 	}
 
 	s := NewFileServer(fileServerOPts)
 
-	tcpTranspot.OnPeer = s.onPeer
+	tcpTransport.OnPeer = s.onPeer
 
 	return s
 
@@ -42,11 +42,11 @@ func main() {
 
 	}()
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(4 * time.Second)
 
 	go s2.Start()
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(4 * time.Second)
 
 	data := bytes.NewReader([]byte("my big data file here!"))
 	s2.storeData("myprivatedata", data)
