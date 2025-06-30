@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"crypto/sha1"
 	"encoding/hex"
 	"errors"
@@ -116,19 +115,8 @@ func (s *store) Write(key string, r io.Reader) (int64, error) {
 	return s.writeStream(key, r)
 }
 
-// FIXME: Instead of copying directly to a reader we first copy this
-// into a buffer. Maybe just return the file from the readstream?
 func (s *store) Read(key string) (int64, io.Reader, error) {
-
-	n, f, err := s.readstream(key)
-	if err != nil {
-		return n, nil, err
-	}
-	defer f.Close()
-	buf := new(bytes.Buffer)
-	_, err = io.Copy(buf, f)
-
-	return n, buf, err
+	return s.readstream(key)
 }
 
 func (s *store) readstream(key string) (int64, io.ReadCloser, error) {
