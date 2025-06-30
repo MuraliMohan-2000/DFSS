@@ -49,8 +49,14 @@ type TCPTransport struct {
 func NewTCPTransport(opts TCPTransportOpts) *TCPTransport {
 	return &TCPTransport{
 		TCPTransportOpts: opts,
-		rpcch:            make(chan RPC),
+		rpcch:            make(chan RPC, 1024),
 	}
+}
+
+// Addr implemnts the Transport interface return the address
+// the transport is accepting connections.
+func (t *TCPTransport) Addr() string {
+	return t.ListenAddr
 }
 
 // consume implements the Transport interface, which will return
@@ -128,8 +134,9 @@ func (t *TCPTransport) handleConn(conn net.Conn, outBound bool) {
 	}
 
 	//Read Loop
-	rpc := RPC{}
+
 	for {
+		rpc := RPC{}
 		err = t.Decoder.Decode(conn, &rpc)
 
 		if err != nil {
@@ -137,11 +144,17 @@ func (t *TCPTransport) handleConn(conn net.Conn, outBound bool) {
 		}
 
 		rpc.From = conn.RemoteAddr().String()
-		peer.Wg.Add(1)
-		fmt.Println("waiting till stream is done")
+
+		if rpc.Stream {
+			peer.Wg.Add(1)
+			fmt.Printf("[%s] incomming stream, waiting...\n", conn.RemoteAddr())
+			peer.Wg.Wait()
+			fmt.Printf("[%s] stream closed, resuming read loop\n", conn.RemoteAddr())
+			continue
+		}
+
 		t.rpcch <- rpc
-		peer.Wg.Wait()
-		fmt.Println("stream done continueing normal read loop")
+
 	}
 
 }
