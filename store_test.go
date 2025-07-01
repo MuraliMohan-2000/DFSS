@@ -21,26 +21,9 @@ func TestPathTRansforFunc(t *testing.T) {
 	}
 }
 
-func TestStoreDeleteKey(t *testing.T) {
-	opts := storeOpts{
-		PathTransformFunc: CASPathTRansformFunc,
-	}
-
-	s := NewStore(opts)
-	key := "momsspecials"
-	data := []byte("some jpg bytes")
-
-	if _, err := s.writeStream(key, bytes.NewReader(data)); err != nil {
-		t.Error(err)
-	}
-
-	if err := s.Delete(key); err != nil {
-		t.Error(err)
-	}
-}
-
 func TestStore(t *testing.T) {
 	s := newStore()
+	id := generateID()
 	defer tearDown(t, s)
 
 	for i := 0; i < 50; i++ {
@@ -48,15 +31,15 @@ func TestStore(t *testing.T) {
 		key := fmt.Sprintf("foo_%d", i)
 		data := []byte("some jpg bytes")
 
-		if _, err := s.writeStream(key, bytes.NewReader(data)); err != nil {
+		if _, err := s.writeStream(id, key, bytes.NewReader(data)); err != nil {
 			t.Error(err)
 		}
 
-		if ok := s.Has(key); !ok {
+		if ok := s.Has(id, key); !ok {
 			t.Errorf("expected to have key %s", key)
 		}
 
-		_, r, err := s.Read(key)
+		_, r, err := s.Read(id, key)
 		if err != nil {
 			t.Error(err)
 		}
@@ -69,12 +52,12 @@ func TestStore(t *testing.T) {
 			t.Errorf("want %s have %s", data, b)
 		}
 
-		err = s.Delete(key)
+		err = s.Delete(id, key)
 		if err != nil {
 			t.Errorf("Deletion Failed for key %s", key)
 		}
 
-		if ok := s.Has(key); ok {
+		if ok := s.Has(id, key); ok {
 			t.Errorf("expected to not have the key %s", key)
 		}
 	}
